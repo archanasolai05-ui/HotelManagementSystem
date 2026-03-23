@@ -22,8 +22,6 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 
-  // ── GET /api/billing/summary ────────────────────────────
-  // Revenue summary — must be before /:id to avoid conflict
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
   @RequirePermission('billing', 'read')
@@ -32,7 +30,6 @@ export class BillingController {
     return this.billingService.getSummary();
   }
 
-  // ── GET /api/billing ────────────────────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('billing', 'read')
@@ -44,7 +41,6 @@ export class BillingController {
     return this.billingService.findAll(currentUser, { paymentStatus });
   }
 
-  // ── GET /api/billing/booking/:bookingId ─────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('billing', 'read')
@@ -53,7 +49,6 @@ export class BillingController {
     return this.billingService.findByBooking(bookingId);
   }
 
-  // ── GET /api/billing/:id ────────────────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('billing', 'read')
@@ -62,32 +57,29 @@ export class BillingController {
     return this.billingService.findOne(id);
   }
 
-  // ── PATCH /api/billing/:id/pay ──────────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('billing', 'update')
   @Patch(':id/pay')
   processPayment(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { paymentMethod: string },
+    @Body() body: any,
   ) {
     return this.billingService.processPayment(id, body);
   }
 
-  // ── PATCH /api/billing/:id/discount ─────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
   @RequirePermission('billing', 'update')
   @Patch(':id/discount')
   applyDiscount(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { discount: number },
+    @Body() body: any,
     @CurrentUser() currentUser: any,
   ) {
     return this.billingService.applyDiscount(id, body, currentUser);
   }
 
-  // ── PATCH /api/billing/:id/refund ───────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
   @RequirePermission('billing', 'update')

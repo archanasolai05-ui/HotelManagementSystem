@@ -10,10 +10,7 @@ import {
   UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
-import {
-  BookingsService,
-  CreateBookingDto,
-} from './bookings.service';
+import { BookingsService } from './bookings.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { PermissionsGuard } from '../auth/permissions.guard';
@@ -26,19 +23,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
-  // ── POST /api/bookings ──────────────────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('bookings', 'create')
   @Post()
-  create(
-    @Body() body: CreateBookingDto,
-    @CurrentUser() currentUser: any,
-  ) {
+  create(@Body() body: any, @CurrentUser() currentUser: any) {
     return this.bookingsService.create(body, currentUser);
   }
 
-  // ── GET /api/bookings ───────────────────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')
   @RequirePermission('bookings', 'read')
@@ -51,7 +43,6 @@ export class BookingsController {
     return this.bookingsService.findAll(currentUser, { status, roomId });
   }
 
-  // ── GET /api/bookings/:id ───────────────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')
   @RequirePermission('bookings', 'read')
@@ -60,7 +51,6 @@ export class BookingsController {
     return this.bookingsService.findOne(id);
   }
 
-  // ── PATCH /api/bookings/:id/checkin ─────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('bookings', 'update')
@@ -69,7 +59,6 @@ export class BookingsController {
     return this.bookingsService.checkIn(id);
   }
 
-  // ── PATCH /api/bookings/:id/checkout ────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('bookings', 'update')
@@ -78,7 +67,6 @@ export class BookingsController {
     return this.bookingsService.checkOut(id);
   }
 
-  // ── PATCH /api/bookings/:id/cancel ──────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('bookings', 'update')
