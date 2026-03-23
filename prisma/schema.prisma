@@ -1,0 +1,217 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+  // output removed — uses default node_modules/@prisma/client
+  // this is the correct setting for Prisma 6
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  REFUNDED
+}
+
+// ─────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────
+
+model User {
+  id          Int      @id @default(autoincrement())
+  name        String
+  email       String   @unique
+  password    String
+  role        Role     @default(USER)
+  isActive    Boolean  @default(true)
+  createdBy   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions UserPermission[]
+  bookings    Booking[]
+  auditLogs   AuditLog[]
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// PERMISSIONS
+// ─────────────────────────────────────────
+
+model Permission {
+  id          Int      @id @default(autoincrement())
+  module      String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+  userPermissions UserPermission[]
+
+  @@unique([module, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  role         Role
+  permissionId Int
+  isEnabled    Boolean    @default(true)
+  grantedBy    Int?
+  updatedAt    DateTime   @updatedAt
+
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([role, permissionId])
+  @@map("role_permissions")
+}
+
+model UserPermission {
+  id           Int        @id @default(autoincrement())
+  userId       Int
+  permissionId Int
+  isEnabled    Boolean    @default(true)
+  grantedBy    Int?
+  updatedAt    DateTime   @updatedAt
+
+  user         User       @relation(fields: [userId], references: [id])
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([userId, permissionId])
+  @@map("user_permissions")
+}
+
+// ─────────────────────────────────────────
+// ROOMS
+// ─────────────────────────────────────────
+
+model Room {
+  id          Int        @id @default(autoincrement())
+  roomNumber  String     @unique
+  type        String
+  floor       Int
+  price       Decimal    @db.Decimal(10, 2)
+  status      RoomStatus @default(AVAILABLE)
+  description String?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  bookings    Booking[]
+
+  @@map("rooms")
+}
+
+// ─────────────────────────────────────────
+// GUESTS
+// ─────────────────────────────────────────
+
+model Guest {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String?
+  phone     String
+  idProof   String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings  Booking[]
+
+  @@map("guests")
+}
+
+// ─────────────────────────────────────────
+// BOOKINGS
+// ─────────────────────────────────────────
+
+model Booking {
+  id          Int           @id @default(autoincrement())
+  bookingRef  String        @unique @default(cuid())
+  guestId     Int
+  roomId      Int
+  userId      Int
+  checkIn     DateTime
+  checkOut    DateTime
+  totalAmount Decimal       @db.Decimal(10, 2)
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  guest       Guest         @relation(fields: [guestId], references: [id])
+  room        Room          @relation(fields: [roomId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+  billing     Billing?
+
+  @@map("bookings")
+}
+
+// ─────────────────────────────────────────
+// BILLING
+// ─────────────────────────────────────────
+
+model Billing {
+  id            Int           @id @default(autoincrement())
+  bookingId     Int           @unique
+  amount        Decimal       @db.Decimal(10, 2)
+  tax           Decimal       @db.Decimal(10, 2) @default(0)
+  discount      Decimal       @db.Decimal(10, 2) @default(0)
+  totalAmount   Decimal       @db.Decimal(10, 2)
+  paymentStatus PaymentStatus @default(UNPAID)
+  paymentMethod String?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  booking       Booking       @relation(fields: [bookingId], references: [id])
+
+  @@map("billing")
+}
+
+// ─────────────────────────────────────────
+// AUDIT LOGS
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    String
+  module    String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
