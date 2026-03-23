@@ -3,16 +3,19 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
-import { UserPlus, Power, PowerOff, RefreshCw } from 'lucide-react';
+import '../styles/Users.css';
+import { UserPlus, Power, PowerOff, RefreshCw, ShieldCheck, X } from 'lucide-react';
 
 export default function Users() {
   const { user, hasRole } = useAuth();
-  const [users, setUsers]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [showForm, setShowForm]   = useState(false);
-  const [form, setForm]           = useState({
-    name: '', email: '', password: '', role: 'USER',
-  });
+  const [users, setUsers]               = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [showForm, setShowForm]         = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userPerms, setUserPerms]       = useState([]);
+  const [allPerms, setAllPerms]         = useState([]);
+  const [permsLoading, setPermsLoading] = useState(false);
+  const [form, setForm] = useState({ name:'', email:'', password:'', role:'USER' });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => { loadUsers(); }, []);
@@ -22,282 +25,203 @@ export default function Users() {
       setLoading(true);
       const res = await api.get('/users');
       setUsers(res.data);
+    } catch { toast.error('Failed to load users'); }
+    finally { setLoading(false); }
+  };
+
+  const openPermissions = async (targetUser) => {
+    setSelectedUser(targetUser);
+    setPermsLoading(true);
+    try {
+      const [allRes, userRes] = await Promise.all([
+        api.get('/permissions'),
+        api.get(`/permissions/user/${targetUser.id}`),
+      ]);
+      setAllPerms(allRes.data);
+      setUserPerms(userRes.data.permissions || []);
+    } catch { toast.error('Failed to load permissions'); }
+    finally { setPermsLoading(false); }
+  };
+
+  const handleToggle = async (permissionId, currentValue, module, action) => {
+    try {
+      await api.patch(`/permissions/user/${selectedUser.id}/toggle`, {
+        permissionId,
+        isEnabled: !currentValue,
+      });
+      toast.success(`${module} → ${action} ${!currentValue ? 'enabled' : 'disabled'}`);
+      const res = await api.get(`/permissions/user/${selectedUser.id}`);
+      setUserPerms(res.data.permissions || []);
     } catch (err) {
-      toast.error('Failed to load users');
-    } finally {
-      setLoading(false);
+      toast.error(err.response?.data?.message || 'Toggle failed');
     }
   };
 
   const handleCreate = async () => {
     if (!form.name || !form.email || !form.password) {
-      toast.error('Please fill all fields');
-      return;
+      toast.error('Please fill all fields'); return;
     }
     try {
       setSubmitting(true);
       await api.post('/auth/register', form);
-      toast.success(`${form.role} created successfully!`);
+      toast.success(`${form.role} created!`);
       setShowForm(false);
-      setForm({ name: '', email: '', password: '', role: 'USER' });
+      setForm({ name:'', email:'', password:'', role:'USER' });
       loadUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create user');
-    } finally {
-      setSubmitting(false);
-    }
+      toast.error(err.response?.data?.message || 'Failed');
+    } finally { setSubmitting(false); }
   };
 
   const handleDisable = async (id, name) => {
     try {
       await api.patch(`/auth/users/${id}/disable`);
-      toast.success(`${name} has been disabled`);
+      toast.success(`${name} disabled`);
       loadUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to disable user');
-    }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
   const handleEnable = async (id, name) => {
     try {
       await api.patch(`/auth/users/${id}/enable`);
-      toast.success(`${name} has been enabled`);
+      toast.success(`${name} enabled`);
       loadUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to enable user');
-    }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
-  // Role options based on current user's role
   const getRoleOptions = () => {
-    if (user?.role === 'SUPER_ADMIN') return ['ADMIN', 'MANAGER', 'USER'];
-    if (user?.role === 'ADMIN')       return ['MANAGER', 'USER'];
+    if (user?.role === 'SUPER_ADMIN') return ['ADMIN','MANAGER','USER'];
+    if (user?.role === 'ADMIN')       return ['MANAGER','USER'];
     if (user?.role === 'MANAGER')     return ['USER'];
     return [];
   };
 
-  const roleBadge = {
-    SUPER_ADMIN: { bg: '#f0eeff', color: '#7F77DD' },
-    ADMIN:       { bg: '#e8f0fb', color: '#378ADD' },
-    MANAGER:     { bg: '#e8f8f2', color: '#1D9E75' },
-    USER:        { bg: '#edf7e0', color: '#639922' },
+  const roleBadgeClass = {
+    SUPER_ADMIN: 'badge badge-super-admin',
+    ADMIN:       'badge badge-admin',
+    MANAGER:     'badge badge-manager',
+    USER:        'badge badge-user',
+  };
+
+  const groupedPerms = allPerms.reduce((acc, p) => {
+    if (!acc[p.module]) acc[p.module] = [];
+    acc[p.module].push(p);
+    return acc;
+  }, {});
+
+  const moduleColor = {
+    rooms:'#7F77DD', bookings:'#378ADD', billing:'#1D9E75',
+    users:'#EF9F27', reports:'#E24B4A', staff:'#D4537E',
   };
 
   return (
-    <div>
+    <div className="users-page">
       {/* Header */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px',
-      }}>
+      <div className="page-header">
         <div>
-          <h1 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 700 }}>
-            Users
-          </h1>
-          <p style={{ margin: 0, color: '#888', fontSize: '14px' }}>
-            Manage users in your branch
-          </p>
+          <h1>Users</h1>
+          <p>Manage users in your branch</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={loadUsers} style={{
-            display: 'flex', alignItems: 'center', gap: '6px',
-            padding: '9px 16px', borderRadius: '8px',
-            border: '1px solid #ddd', background: '#fff',
-            cursor: 'pointer', fontSize: '14px',
-          }}>
+        <div className="page-header-actions">
+          <button className="btn btn-outline" onClick={loadUsers}>
             <RefreshCw size={15} /> Refresh
           </button>
-          {hasRole(['SUPER_ADMIN', 'ADMIN', 'MANAGER']) && (
-            <button onClick={() => setShowForm(!showForm)} style={{
-              display: 'flex', alignItems: 'center', gap: '6px',
-              padding: '9px 16px', borderRadius: '8px',
-              border: 'none', background: '#7F77DD', color: '#fff',
-              cursor: 'pointer', fontSize: '14px', fontWeight: 600,
-            }}>
+          {hasRole(['SUPER_ADMIN','ADMIN','MANAGER']) && (
+            <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
               <UserPlus size={15} /> Add User
             </button>
           )}
         </div>
       </div>
 
-      {/* Create User Form */}
+      {/* Create form */}
       {showForm && (
-        <div style={{
-          backgroundColor: '#fff',
-          borderRadius: '12px',
-          padding: '24px',
-          marginBottom: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-        }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: '16px' }}>
-            Create New User
-          </h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '16px',
-          }}>
+        <div className="form-card">
+          <h3>Create New User</h3>
+          <div className="form-grid">
             {[
-              { label: 'Full Name', key: 'name', type: 'text' },
-              { label: 'Email', key: 'email', type: 'email' },
-              { label: 'Password', key: 'password', type: 'password' },
-            ].map(field => (
-              <div key={field.key}>
-                <label style={{
-                  display: 'block', fontSize: '13px',
-                  fontWeight: 500, marginBottom: '6px', color: '#555',
-                }}>
-                  {field.label}
-                </label>
+              {label:'Full Name', key:'name',     type:'text'},
+              {label:'Email',     key:'email',    type:'email'},
+              {label:'Password',  key:'password', type:'password'},
+            ].map(f => (
+              <div key={f.key} className="form-group">
+                <label>{f.label}</label>
                 <input
-                  type={field.type}
-                  value={form[field.key]}
-                  onChange={e => setForm({...form, [field.key]: e.target.value})}
-                  style={{
-                    width: '100%', padding: '9px 12px',
-                    border: '1px solid #ddd', borderRadius: '8px',
-                    fontSize: '14px', boxSizing: 'border-box',
-                  }}
+                  type={f.type}
+                  value={form[f.key]}
+                  onChange={e => setForm({...form, [f.key]: e.target.value})}
                 />
               </div>
             ))}
-            <div>
-              <label style={{
-                display: 'block', fontSize: '13px',
-                fontWeight: 500, marginBottom: '6px', color: '#555',
-              }}>
-                Role
-              </label>
-              <select
-                value={form.role}
-                onChange={e => setForm({...form, role: e.target.value})}
-                style={{
-                  width: '100%', padding: '9px 12px',
-                  border: '1px solid #ddd', borderRadius: '8px',
-                  fontSize: '14px', boxSizing: 'border-box',
-                }}
-              >
-                {getRoleOptions().map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
+            <div className="form-group">
+              <label>Role</label>
+              <select value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
+                {getRoleOptions().map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-            <button onClick={handleCreate} disabled={submitting} style={{
-              padding: '9px 20px', borderRadius: '8px',
-              border: 'none', background: '#7F77DD', color: '#fff',
-              cursor: submitting ? 'not-allowed' : 'pointer',
-              fontSize: '14px', fontWeight: 600,
-            }}>
+          <div className="form-actions">
+            <button className="btn btn-primary" onClick={handleCreate} disabled={submitting}>
               {submitting ? 'Creating...' : 'Create User'}
             </button>
-            <button onClick={() => setShowForm(false)} style={{
-              padding: '9px 20px', borderRadius: '8px',
-              border: '1px solid #ddd', background: '#fff',
-              cursor: 'pointer', fontSize: '14px',
-            }}>
+            <button className="btn btn-outline" onClick={() => setShowForm(false)}>
               Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Users Table */}
-      <div style={{
-        backgroundColor: '#fff', borderRadius: '12px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.06)', overflow: 'hidden',
-      }}>
+      {/* Table */}
+      <div className="table-wrapper">
         {loading ? (
-          <p style={{ padding: '24px', color: '#888' }}>Loading users...</p>
+          <p className="table-loading">Loading users...</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="data-table">
             <thead>
-              <tr style={{ backgroundColor: '#f8f9fa' }}>
-                {['Name', 'Email', 'Role', 'Status', 'Actions'].map(h => (
-                  <th key={h} style={{
-                    padding: '12px 16px', textAlign: 'left',
-                    fontSize: '13px', fontWeight: 600, color: '#555',
-                  }}>
-                    {h}
-                  </th>
+              <tr>
+                {['Name','Email','Role','Status','Actions'].map(h => (
+                  <th key={h}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {users.map((u, i) => (
-                <tr key={u.id} style={{
-                  borderTop: '1px solid #f0f0f0',
-                  backgroundColor: i % 2 === 0 ? '#fff' : '#fafafa',
-                }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 500 }}>
-                    {u.name}
-                    {u.id === user?.id && (
-                      <span style={{
-                        marginLeft: '8px', fontSize: '11px',
-                        color: '#888',
-                      }}>
-                        (you)
-                      </span>
-                    )}
+              {users.map(u => (
+                <tr key={u.id}>
+                  <td>
+                    <strong>{u.name}</strong>
+                    {u.id === user?.id && <span className="user-you-tag">(you)</span>}
                   </td>
-                  <td style={{ padding: '12px 16px', color: '#666' }}>
-                    {u.email}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      padding: '3px 10px', borderRadius: '12px',
-                      fontSize: '12px', fontWeight: 600,
-                      backgroundColor: roleBadge[u.role]?.bg,
-                      color: roleBadge[u.role]?.color,
-                    }}>
-                      {u.role?.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      padding: '3px 10px', borderRadius: '12px',
-                      fontSize: '12px', fontWeight: 600,
-                      backgroundColor: u.isActive ? '#e8f8f2' : '#fee8e8',
-                      color: u.isActive ? '#1D9E75' : '#E24B4A',
-                    }}>
+                  <td>{u.email}</td>
+                  <td><span className={roleBadgeClass[u.role]}>{u.role?.replace('_',' ')}</span></td>
+                  <td>
+                    <span className={`badge ${u.isActive ? 'badge-active' : 'badge-disabled'}`}>
                       {u.isActive ? 'Active' : 'Disabled'}
                     </span>
                   </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    {/* Don't show action buttons for yourself */}
+                  <td>
                     {u.id !== user?.id && (
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className="action-group">
                         {u.isActive ? (
-                          <button
-                            onClick={() => handleDisable(u.id, u.name)}
-                            style={{
-                              display: 'flex', alignItems: 'center',
-                              gap: '4px', padding: '5px 10px',
-                              borderRadius: '6px', border: 'none',
-                              background: '#fee8e8', color: '#E24B4A',
-                              cursor: 'pointer', fontSize: '12px',
-                            }}
-                          >
-                            <PowerOff size={12} /> Disable
+                          <button className="btn btn-sm btn-danger" onClick={() => handleDisable(u.id, u.name)}>
+                            <PowerOff size={11} /> Disable
                           </button>
                         ) : (
-                          hasRole(['SUPER_ADMIN', 'ADMIN']) && (
-                            <button
-                              onClick={() => handleEnable(u.id, u.name)}
-                              style={{
-                                display: 'flex', alignItems: 'center',
-                                gap: '4px', padding: '5px 10px',
-                                borderRadius: '6px', border: 'none',
-                                background: '#e8f8f2', color: '#1D9E75',
-                                cursor: 'pointer', fontSize: '12px',
-                              }}
-                            >
-                              <Power size={12} /> Enable
+                          hasRole(['SUPER_ADMIN','ADMIN']) ? (
+                            <button className="btn btn-sm btn-success" onClick={() => handleEnable(u.id, u.name)}>
+                              <Power size={11} /> Enable
                             </button>
+                          ) : (
+                            <span className="contact-admin-msg">Contact Admin to enable</span>
                           )
+                        )}
+                        {u.role === 'USER' && (
+                          <button
+                            className="btn btn-sm"
+                            style={{ background:'var(--primary-light)', color:'var(--primary)' }}
+                            onClick={() => openPermissions(u)}
+                          >
+                            <ShieldCheck size={11} /> Permissions
+                          </button>
                         )}
                       </div>
                     )}
@@ -308,6 +232,59 @@ export default function Users() {
           </table>
         )}
       </div>
+
+      {/* Permissions slide panel */}
+      {selectedUser && (
+        <>
+          <div className="perm-overlay" onClick={() => setSelectedUser(null)} />
+          <div className="perm-panel">
+            <div className="perm-panel-header">
+              <div>
+                <h3>Permissions — {selectedUser.name}</h3>
+                <p>Toggle features for this user</p>
+              </div>
+              <button className="perm-close-btn" onClick={() => setSelectedUser(null)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="perm-note">
+              You can only enable permissions that you yourself have access to.
+            </div>
+            {permsLoading ? (
+              <p style={{ color:'var(--text-muted)' }}>Loading...</p>
+            ) : (
+              Object.entries(groupedPerms).map(([module, perms]) => (
+                <div key={module}>
+                  <h4
+                    className="perm-module-title"
+                    style={{ color: moduleColor[module] || '#555', borderBottomColor: moduleColor[module] + '44' }}
+                  >
+                    {module}
+                  </h4>
+                  {perms.map(perm => {
+                    const override = userPerms.find(up => up.permissionId === perm.id);
+                    const isEnabled = override?.isEnabled ?? false;
+                    return (
+                      <div key={perm.id} className="toggle-wrap">
+                        <div className="toggle-info">
+                          <p>{perm.action}</p>
+                          {perm.description && <span>{perm.description}</span>}
+                        </div>
+                        <button
+                          className={`toggle-btn ${isEnabled ? 'on' : 'off'}`}
+                          onClick={() => handleToggle(perm.id, isEnabled, module, perm.action)}
+                        >
+                          <span className="toggle-knob" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

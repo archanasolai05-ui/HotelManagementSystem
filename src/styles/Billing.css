@@ -1,0 +1,82 @@
+/* src/styles/Billing.css */
+
+.billing-page {
+  padding: 0;
+}
+
+.billing-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.billing-summary-card {
+  background-color: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--border);
+  transition: transform 0.15s;
+}
+
+.billing-summary-card:hover {
+  transform: translateY(-2px);
+}
+
+.billing-summary-card.revenue  { border-left-color: var(--green); }
+.billing-summary-card.pending  { border-left-color: var(--amber); }
+.billing-summary-card.refunded { border-left-color: var(--red); }
+.billing-summary-card.total    { border-left-color: var(--primary); }
+
+.billing-summary-card p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.billing-summary-card h3 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.billing-summary-card.revenue  h3 { color: var(--green); }
+.billing-summary-card.pending  h3 { color: var(--amber); }
+.billing-summary-card.refunded h3 { color: var(--red); }
+.billing-summary-card.total    h3 { color: var(--primary); }
+
+.billing-discount {
+  color: var(--green);
+  font-weight: 500;
+}
+
+.billing-total {
+  font-weight: 700;
+}
+
+.billing-action-group {
+  display: flex;
+  gap: 6px;
+}
+
+.billing-pay-btn {
+  background: var(--green-light);
+  color: var(--green);
+  border: none;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.billing-discount-btn {
+  background: var(--blue-light);
+  color: var(--blue);
+  border: none;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
