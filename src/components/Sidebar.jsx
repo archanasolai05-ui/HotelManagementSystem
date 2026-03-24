@@ -21,7 +21,7 @@ export default function Sidebar() {
     { label: 'Users',       path: '/users',       icon: Users,           roles: ['SUPER_ADMIN','ADMIN','MANAGER'] },
     { label: 'Rooms',       path: '/rooms',       icon: BedDouble,       roles: ['SUPER_ADMIN','ADMIN','MANAGER','USER'] },
     { label: 'Bookings',    path: '/bookings',    icon: CalendarCheck,   roles: ['SUPER_ADMIN','ADMIN','MANAGER','USER'] },
-    { label: 'Billing',     path: '/billing',     icon: Receipt,         roles: ['SUPER_ADMIN','ADMIN','MANAGER'] },
+    { label: 'Billing',     path: '/billing',     icon: Receipt,         roles: ['SUPER_ADMIN','ADMIN','MANAGER','USER'] },
     { label: 'Permissions', path: '/permissions', icon: ShieldCheck,     roles: ['SUPER_ADMIN','ADMIN'] },
   ];
 

@@ -72,30 +72,43 @@ export default function Permissions() {
         <p className="table-loading">Loading permissions...</p>
       ) : (
         <div className="perm-modules-grid">
-          {Object.entries(permissions).map(([module, perms]) => (
-            <div key={module} className={`perm-module-card ${module}`}>
-              <div className="perm-module-header">
-                <h3 className={module}>{module}</h3>
-              </div>
-              <div className="perm-module-body">
-                {perms.map(perm => (
-                  <div key={perm.permissionId} className="toggle-wrap">
-                    <div className="toggle-info">
-                      <p>{perm.action}</p>
-                      {perm.description && <span>{perm.description}</span>}
+          {Object.entries(permissions)
+            .filter(([module]) => {
+              if (selectedRole === 'USER') {
+                // STAFF users should only see rooms/bookings/billing modules
+                return ['rooms', 'bookings', 'billing'].includes(module);
+              }
+              if (selectedRole === 'MANAGER') {
+                // MANAGER can work on rooms/bookings/billing/staff only.
+                // ‘users’ CRUD (for ADMIN/SUPER_ADMIN/MANAGER) is not visible.
+                return ['rooms', 'bookings', 'billing', 'staff'].includes(module);
+              }
+              return true;
+            })
+            .map(([module, perms]) => (
+              <div key={module} className={`perm-module-card ${module}`}>
+                <div className="perm-module-header">
+                  <h3 className={module}>{module}</h3>
+                </div>
+                <div className="perm-module-body">
+                  {perms.map(perm => (
+                    <div key={perm.permissionId} className="toggle-wrap">
+                      <div className="toggle-info">
+                        <p>{perm.action}</p>
+                        {perm.description && <span>{perm.description}</span>}
+                      </div>
+                      <button
+                        className={`toggle-btn ${perm.isEnabled ? 'on' : 'off'}`}
+                        onClick={() => handleToggle(perm.permissionId, perm.isEnabled, module, perm.action)}
+                        disabled={toggling === perm.permissionId}
+                      >
+                        <span className="toggle-knob" />
+                      </button>
                     </div>
-                    <button
-                      className={`toggle-btn ${perm.isEnabled ? 'on' : 'off'}`}
-                      onClick={() => handleToggle(perm.permissionId, perm.isEnabled, module, perm.action)}
-                      disabled={toggling === perm.permissionId}
-                    >
-                      <span className="toggle-knob" />
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
         </div>
       )}
     </div>

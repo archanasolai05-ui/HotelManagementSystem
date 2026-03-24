@@ -46,7 +46,7 @@ export default function Users() {
     setPermsLoading(true);
     try {
       const [roleRes, userRes] = await Promise.all([
-        api.get('/permissions/role/USER'),
+        api.get(`/permissions/role/${targetUser.role}`),
         api.get(`/permissions/user/${targetUser.id}`),
       ]);
 
@@ -59,6 +59,7 @@ export default function Users() {
             module,
             action:      p.action,
             description: p.description,
+            roleEnabled: p.isEnabled, // Store role-level status
           });
         });
       });
@@ -74,15 +75,23 @@ export default function Users() {
   };
 
   // ── Toggle permission for user ────────────────────────
-  const handleToggle = async (permissionId, currentValue, module, action) => {
+  const handleToggle = async (permissionId, currentEffectiveValue, module, action) => {
+    // Find the permission to check if role-level allows toggling
+    const perm = allPerms.find(p => p.id === permissionId);
+    if (!perm?.roleEnabled) {
+      toast.error('Cannot modify permission disabled by Super Admin');
+      return;
+    }
+
     try {
       await api.patch(`/permissions/user/${selectedUser.id}/toggle`, {
         permissionId,
-        isEnabled: !currentValue,
+        isEnabled: !currentEffectiveValue,
       });
       toast.success(
-        `${module} → ${action} ${!currentValue ? 'enabled' : 'disabled'}`,
+        `${module} → ${action} ${!currentEffectiveValue ? 'enabled' : 'disabled'}`,
       );
+      // Reload permissions to reflect changes
       const res = await api.get(`/permissions/user/${selectedUser.id}`);
       setUserPerms(res.data.permissions || []);
     } catch (err) {
@@ -355,6 +364,7 @@ export default function Users() {
             {/* Warning note */}
             <div className="perm-note">
               You can only enable permissions that you yourself have access to.
+              Permissions disabled by Super Admin cannot be overridden.
             </div>
 
             {/* Permission toggles */}
@@ -384,7 +394,13 @@ export default function Users() {
                     const override = userPerms.find(
                       up => up.permissionId === perm.id,
                     );
-                    const isEnabled = override?.isEnabled ?? false;
+
+                    // Calculate effective permission status:
+                    // 1. If role-level is disabled, permission is disabled (no override possible)
+                    // 2. If role-level is enabled, use user-level override or default to enabled
+                    const effectiveEnabled = perm.roleEnabled
+                      ? (override?.isEnabled ?? true)  // Role enabled, check override or default to enabled
+                      : false;  // Role disabled, cannot be enabled
 
                     return (
                       <div key={perm.id} className="toggle-wrap">
@@ -393,15 +409,21 @@ export default function Users() {
                           {perm.description && (
                             <span>{perm.description}</span>
                           )}
+                          {!perm.roleEnabled && (
+                            <span style={{ color: 'var(--danger)', fontSize: '12px' }}>
+                              (Disabled by Super Admin)
+                            </span>
+                          )}
                         </div>
                         <button
-                          className={`toggle-btn ${isEnabled ? 'on' : 'off'}`}
+                          className={`toggle-btn ${effectiveEnabled ? 'on' : 'off'}`}
                           onClick={() => handleToggle(
                             perm.id,
-                            isEnabled,
+                            effectiveEnabled,
                             module,
                             perm.action,
                           )}
+                          disabled={!perm.roleEnabled} // Cannot toggle if role-level is disabled
                         >
                           <span className="toggle-knob" />
                         </button>

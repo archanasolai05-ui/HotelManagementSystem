@@ -67,7 +67,7 @@ export default function App() {
             }/>
 
             <Route path="/billing" element={
-              <ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN', 'MANAGER']}>
+              <ProtectedRoute roles={['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER']}>
                 <AppLayout><Billing /></AppLayout>
               </ProtectedRoute>
             }/>

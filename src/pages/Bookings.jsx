@@ -240,8 +240,9 @@ export default function Bookings() {
   const preview = getNightsPreview();
 
   // ── Derived permission flags ───────────────────────────────────────
-  const isManagerOrAbove = hasRole(['SUPERADMIN', 'ADMIN', 'MANAGER']);
-  const isStaff          = hasRole(['STAFF']);
+  const isManagerOrAbove = hasRole(['SUPER_ADMIN', 'ADMIN', 'MANAGER']);
+  // In this app, a backend USER role represents staff users.
+  const isStaff          = hasRole(['USER']);
   const showNewBookingBtn = isManagerOrAbove || isStaff || canCreate;
   const showActions       = isManagerOrAbove || isStaff || canUpdate;
 
