@@ -5,6 +5,9 @@ import toast from 'react-hot-toast';
 import '../styles/Permissions.css';
 import { RefreshCw } from 'lucide-react';
 
+// Display label: USER → STAFF (value stays 'USER' for API calls)
+const getRoleLabel = (role) => role === 'USER' ? 'STAFF' : role;
+
 export default function Permissions() {
   const [selectedRole, setSelectedRole] = useState('MANAGER');
   const [permissions, setPermissions]   = useState({});
@@ -29,7 +32,10 @@ export default function Permissions() {
         permissionId,
         isEnabled: !currentValue,
       });
-      toast.success(`${module} → ${action} ${!currentValue ? 'enabled' : 'disabled'} for ${selectedRole}`);
+      // Show "STAFF" in toast instead of "USER"
+      toast.success(
+        `${module} → ${action} ${!currentValue ? 'enabled' : 'disabled'} for ${getRoleLabel(selectedRole)}`
+      );
       loadRolePermissions();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Toggle failed');
@@ -50,13 +56,13 @@ export default function Permissions() {
 
       {/* Role selector */}
       <div className="role-selector">
-        {['ADMIN','MANAGER','USER'].map(role => (
+        {['ADMIN', 'MANAGER', 'USER'].map(role => (
           <button
             key={role}
             className={`role-btn${selectedRole === role ? ' active' : ''}`}
             onClick={() => setSelectedRole(role)}
           >
-            {role}
+            {getRoleLabel(role)}  {/* Shows STAFF instead of USER */}
           </button>
         ))}
       </div>
