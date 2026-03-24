@@ -240,9 +240,10 @@ export default function Bookings() {
   const preview = getNightsPreview();
 
   // ── Derived permission flags ───────────────────────────────────────
-  const isManagerOrAbove  = hasRole(['SUPERADMIN', 'ADMIN', 'MANAGER']);
-const showNewBookingBtn = isManagerOrAbove || canCreate;
-  const showActions       = isManagerOrAbove || canUpdate;
+  const isManagerOrAbove = hasRole(['SUPERADMIN', 'ADMIN', 'MANAGER']);
+  const isStaff          = hasRole(['STAFF']);
+  const showNewBookingBtn = isManagerOrAbove || isStaff || canCreate;
+  const showActions       = isManagerOrAbove || isStaff || canUpdate;
 
   return (
     <div className="bookings-page">
