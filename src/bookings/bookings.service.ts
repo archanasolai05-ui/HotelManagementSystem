@@ -36,7 +36,25 @@ export class BookingsService {
       where: { phone: dto.guestPhone },
     });
 
-    if (!guest) {
+    if (guest) {
+      // If guest exists, verify the name matches to prevent accidental association
+      if (guest.name.toLowerCase() !== dto.guestName.toLowerCase()) {
+        throw new ConflictException(
+          `A guest with phone number ${dto.guestPhone} already exists with name "${guest.name}". ` +
+          `Please use a different phone number or verify the guest details.`,
+        );
+      }
+      // Update other details if provided
+      guest = await this.prisma.guest.update({
+        where: { id: guest.id },
+        data: {
+          email:   dto.guestEmail   || guest.email,
+          idProof: dto.guestIdProof || guest.idProof,
+          address: dto.guestAddress || guest.address,
+        },
+      });
+    } else {
+      // Create new guest
       guest = await this.prisma.guest.create({
         data: {
           name:    dto.guestName,

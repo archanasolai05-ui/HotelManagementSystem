@@ -30,11 +30,7 @@ export class BillingService {
       where.booking = { userId: { in: ids } };
     }
 
-    if (requestingUser.role === 'USER') {
-      // Staff can only see their own bookings' billings
-      where.booking = { userId: requestingUser.id };
-    }
-
+    // USER (staff) with billing:read permission can see ALL billings
     // SUPER_ADMIN and ADMIN see everything — no filter
     return where;
   }

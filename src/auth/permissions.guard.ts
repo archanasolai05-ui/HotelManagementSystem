@@ -30,30 +30,7 @@ export class PermissionsGuard implements CanActivate {
     // SUPER_ADMIN bypasses all permission checks
     if (user.role === 'SUPER_ADMIN') return true;
 
-    // Layer 1 — user-level override (Prisma 6 syntax)
-    const userPerm = await this.prisma.userPermission.findFirst({
-      where: {
-        userId: user.id,
-        permission: {
-          is: {
-            module,
-            action,
-          },
-        },
-      },
-      include: { permission: true },
-    });
-
-    if (userPerm) {
-      if (!userPerm.isEnabled) {
-        throw new ForbiddenException(
-          `Permission denied. No access to: ${module} → ${action}`,
-        );
-      }
-      return true;
-    }
-
-    // Layer 2 — role-level permission (Prisma 6 syntax)
+    // Layer 1 — role-level permission (check this first)
     const rolePerm = await this.prisma.rolePermission.findFirst({
       where: {
         role: user.role,
@@ -67,12 +44,38 @@ export class PermissionsGuard implements CanActivate {
       },
     });
 
+    // If role-level permission is disabled, deny access (no override allowed)
     if (!rolePerm) {
       throw new ForbiddenException(
         `Permission denied. No access to: ${module} → ${action}`,
       );
     }
 
+    // Layer 2 — user-level override (only checked if role allows)
+    const userPerm = await this.prisma.userPermission.findFirst({
+      where: {
+        userId: user.id,
+        permission: {
+          is: {
+            module,
+            action,
+          },
+        },
+      },
+      include: { permission: true },
+    });
+
+    // If user-level override exists, use it
+    if (userPerm) {
+      if (!userPerm.isEnabled) {
+        throw new ForbiddenException(
+          `Permission denied. No access to: ${module} → ${action}`,
+        );
+      }
+      return true;
+    }
+
+    // No user-level override, but role-level allows, so allow
     return true;
   }
 }

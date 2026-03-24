@@ -114,7 +114,7 @@ async function main() {
   console.log('✅ Manager role permissions seeded');
 
   // ── Role permissions for USER ───────────────────────
-  const userAllowed = ['rooms:read', 'bookings:read'];
+  const userAllowed = ['rooms:read', 'bookings:read', 'billing:read'];
 
   for (const p of allPermissions) {
     const key = `${p.module}:${p.action}`;
