@@ -23,14 +23,17 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
+  // ── Create booking ─────────────────────────────────────────────────
+  // FIX: Added USER so staff with 'bookings create' permission can create
   @UseGuards(RolesGuard, PermissionsGuard)
-  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')   // ← added USER
   @RequirePermission('bookings', 'create')
   @Post()
   create(@Body() body: any, @CurrentUser() currentUser: any) {
     return this.bookingsService.create(body, currentUser);
   }
 
+  // ── List all bookings ──────────────────────────────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')
   @RequirePermission('bookings', 'read')
@@ -43,6 +46,31 @@ export class BookingsController {
     return this.bookingsService.findAll(currentUser, { status, roomId });
   }
 
+  // ── Check availability ─────────────────────────────────────────────
+  @UseGuards(RolesGuard, PermissionsGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')
+  @RequirePermission('bookings', 'read')
+  @Get('availability')
+  checkAvailability(
+    @Query('roomId')   roomId:   string,
+    @Query('checkIn')  checkIn:  string,
+    @Query('checkOut') checkOut: string,
+  ) {
+    return this.bookingsService.checkRoomAvailability(
+      Number(roomId), checkIn, checkOut,
+    );
+  }
+
+  // ── Booked dates for room ──────────────────────────────────────────
+  @UseGuards(RolesGuard, PermissionsGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')
+  @RequirePermission('bookings', 'read')
+  @Get('room/:roomId/booked-dates')
+  getBookedDates(@Param('roomId', ParseIntPipe) roomId: number) {
+    return this.bookingsService.getBookedDatesForRoom(roomId);
+  }
+
+  // ── Get single booking ─────────────────────────────────────────────
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')
   @RequirePermission('bookings', 'read')
@@ -51,24 +79,30 @@ export class BookingsController {
     return this.bookingsService.findOne(id);
   }
 
+  // ── Check in ───────────────────────────────────────────────────────
+  // FIX: Added USER so staff with 'bookings update' permission can check in
   @UseGuards(RolesGuard, PermissionsGuard)
-  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')   // ← added USER
   @RequirePermission('bookings', 'update')
   @Patch(':id/checkin')
   checkIn(@Param('id', ParseIntPipe) id: number) {
     return this.bookingsService.checkIn(id);
   }
 
+  // ── Check out ──────────────────────────────────────────────────────
+  // FIX: Added USER so staff with 'bookings update' permission can check out
   @UseGuards(RolesGuard, PermissionsGuard)
-  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')   // ← added USER
   @RequirePermission('bookings', 'update')
   @Patch(':id/checkout')
   checkOut(@Param('id', ParseIntPipe) id: number) {
     return this.bookingsService.checkOut(id);
   }
 
+  // ── Cancel booking ─────────────────────────────────────────────────
+  // FIX: Added USER so staff with 'bookings update' permission can cancel
   @UseGuards(RolesGuard, PermissionsGuard)
-  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')   // ← added USER
   @RequirePermission('bookings', 'update')
   @Patch(':id/cancel')
   cancel(@Param('id', ParseIntPipe) id: number) {

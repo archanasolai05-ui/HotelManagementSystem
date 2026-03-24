@@ -16,12 +16,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('permissions')
 @UseGuards(JwtAuthGuard)
-// ↑ All routes require valid JWT token
 export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
   // ── GET /api/permissions ────────────────────────────────
-  // List all permissions in the system
   @UseGuards(RolesGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
   @Get()
@@ -30,18 +28,17 @@ export class PermissionsController {
   }
 
   // ── GET /api/permissions/role/:role ─────────────────────
-  // Get all permissions with enabled status for a role
-  // Frontend uses this to build toggle dashboard
+  // FIX: Added MANAGER so they can load USER role permissions
+  // when opening the permissions panel for their staff
   @UseGuards(RolesGuard)
-  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')   // ← added MANAGER
   @Get('role/:role')
   getRolePermissions(@Param('role') role: string) {
     return this.permissionsService.getRolePermissions(role);
   }
 
   // ── PATCH /api/permissions/role/:role/toggle ─────────────
-  // Toggle a permission ON or OFF for a role
-  // Body: { permissionId: number, isEnabled: boolean }
+  // Only SUPER_ADMIN and ADMIN can toggle role-level permissions
   @UseGuards(RolesGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
   @Patch('role/:role/toggle')
@@ -56,7 +53,6 @@ export class PermissionsController {
   }
 
   // ── GET /api/permissions/user/:userId ───────────────────
-  // Get permission overrides for a specific user
   @UseGuards(RolesGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @Get('user/:userId')
@@ -68,8 +64,6 @@ export class PermissionsController {
   }
 
   // ── PATCH /api/permissions/user/:userId/toggle ──────────
-  // Toggle a permission override for a specific user
-  // Body: { permissionId: number, isEnabled: boolean }
   @UseGuards(RolesGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @Patch('user/:userId/toggle')

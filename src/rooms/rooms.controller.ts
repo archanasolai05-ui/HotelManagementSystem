@@ -20,13 +20,10 @@ import { RequirePermission } from '../auth/decorators/permissions.decorator';
 
 @Controller('rooms')
 @UseGuards(JwtAuthGuard)
-// ↑ All routes require valid JWT token
 export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
   // ── POST /api/rooms ─────────────────────────────────────
-  // Create a new room
-  // Requires role + permission check
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('rooms', 'create')
@@ -36,31 +33,26 @@ export class RoomsController {
   }
 
   // ── GET /api/rooms ──────────────────────────────────────
-  // List all rooms with optional filters
-  // ?status=AVAILABLE&type=Suite&floor=2
+  // ?status=AVAILABLE&type=Suite&floor=2&isActive=true
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')
   @RequirePermission('rooms', 'read')
   @Get()
   findAll(
-    @Query('status') status?: string,
-    @Query('type') type?: string,
-    @Query('floor') floor?: number,
+    @Query('status')   status?:   string,
+    @Query('type')     type?:     string,
+    @Query('floor')    floor?:    number,
     @Query('isActive') isActive?: string,
   ) {
     return this.roomsService.findAll({
       status,
       type,
       floor,
-      // Convert string query param to boolean
-      isActive: isActive !== undefined
-        ? isActive === 'true'
-        : undefined,
+      isActive: isActive !== undefined ? isActive === 'true' : undefined,
     });
   }
 
   // ── GET /api/rooms/:id ──────────────────────────────────
-  // Get single room details
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER', 'USER')
   @RequirePermission('rooms', 'read')
@@ -70,7 +62,6 @@ export class RoomsController {
   }
 
   // ── PATCH /api/rooms/:id ────────────────────────────────
-  // Update room details
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('rooms', 'update')
@@ -83,7 +74,8 @@ export class RoomsController {
   }
 
   // ── PATCH /api/rooms/:id/status ─────────────────────────
-  // Quick status update — AVAILABLE / OCCUPIED / MAINTENANCE
+  // Manual status override — only AVAILABLE and MAINTENANCE allowed.
+  // OCCUPIED is set automatically by check-in/check-out.
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')
   @RequirePermission('rooms', 'update')
@@ -96,7 +88,6 @@ export class RoomsController {
   }
 
   // ── DELETE /api/rooms/:id ───────────────────────────────
-  // Soft delete — sets isActive = false
   @UseGuards(RolesGuard, PermissionsGuard)
   @Roles('SUPER_ADMIN', 'ADMIN')
   @RequirePermission('rooms', 'delete')

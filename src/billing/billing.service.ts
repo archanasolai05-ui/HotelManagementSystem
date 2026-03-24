@@ -11,21 +11,41 @@ import { PrismaService } from '../prisma/prisma.service';
 export class BillingService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(requestingUser: any, filters: any) {
-    const where: any = {};
-
-    if (filters.paymentStatus) {
-      where.paymentStatus = filters.paymentStatus;
-    }
+  // ── Build shared "where" clause based on role ──────────────────────
+  private async buildWhereForUser(requestingUser: any, extra: any = {}) {
+    const where: any = { ...extra };
 
     if (requestingUser.role === 'MANAGER') {
+      // Include billings from bookings made by the manager OR any staff under them
       const myUsers = await this.prisma.user.findMany({
-        where: { createdBy: requestingUser.id },
+        where: {
+          OR: [
+            { createdBy: requestingUser.id },   // staff created by this manager
+            { id: requestingUser.id },           // the manager themselves
+          ],
+        },
         select: { id: true },
       });
-      const ids = [requestingUser.id, ...myUsers.map((u: any) => u.id)];
+      const ids = myUsers.map((u: any) => u.id);
       where.booking = { userId: { in: ids } };
     }
+
+    if (requestingUser.role === 'USER') {
+      // Staff can only see their own bookings' billings
+      where.booking = { userId: requestingUser.id };
+    }
+
+    // SUPER_ADMIN and ADMIN see everything — no filter
+    return where;
+  }
+
+  async findAll(requestingUser: any, filters: any) {
+    const extra: any = {};
+    if (filters.paymentStatus) {
+      extra.paymentStatus = filters.paymentStatus;
+    }
+
+    const where = await this.buildWhereForUser(requestingUser, extra);
 
     const billings = await this.prisma.billing.findMany({
       where,
@@ -172,8 +192,12 @@ export class BillingService {
     };
   }
 
-  async getSummary() {
+  // ── Summary scoped to the requesting user's role ───────────────────
+  async getSummary(requestingUser: any) {
+    const where = await this.buildWhereForUser(requestingUser);
+
     const all = await this.prisma.billing.findMany({
+      where,
       include: { booking: true },
     });
 

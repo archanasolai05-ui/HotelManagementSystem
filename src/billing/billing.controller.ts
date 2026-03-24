@@ -22,12 +22,14 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 
+  // ── FIX 1: Added MANAGER to @Roles ────────────────────────────────
+  // ── FIX 2: Added @CurrentUser() so summary is scoped to the user's role
   @UseGuards(RolesGuard, PermissionsGuard)
-  @Roles('SUPER_ADMIN', 'ADMIN')
+  @Roles('SUPER_ADMIN', 'ADMIN', 'MANAGER')   // ← was missing MANAGER
   @RequirePermission('billing', 'read')
   @Get('summary')
-  getSummary() {
-    return this.billingService.getSummary();
+  getSummary(@CurrentUser() currentUser: any) {  // ← now passes user
+    return this.billingService.getSummary(currentUser);
   }
 
   @UseGuards(RolesGuard, PermissionsGuard)
